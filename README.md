@@ -1,2 +1,2 @@
-# nim-ssb-alike
+# disonet
 WIP
