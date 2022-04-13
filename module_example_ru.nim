@@ -66,7 +66,6 @@ while true:
             cmd_arg[1] = multi_text
             multi_line = false
             multi_text = ""
-            #fixme: удалять перевод строки в конце multi_text если он есть?
 
     # Сохраняем полученные данные в таблице data
     data[ cmd_arg[0] ] = cmd_arg[1]
