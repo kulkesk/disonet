@@ -46,8 +46,8 @@ while true:
     # Сохраняем полученные данные в таблице data
     data[ cmd_arg[0] ] = cmd_arg[1]
 
-    # Отображаем таблицу
-    echo data
+    # Отображаем таблицу (отладочная информация)
+    stderr.write_line( "stderr: ", data )
 
     # Обрабатываем поступившие команды
     if data.has_key( "cmd" ):
@@ -59,8 +59,11 @@ while true:
             # Удаляем саму команду из таблицы
             data.del( "cmd" )
 
-            # Отображаем таблицу
-            echo data
+            # Отображаем таблицу (отладочная информация)
+            stderr.write_line( "stderr: ", data )
+
+            # Отвечаем что останавливаем модуль
+            stdout.write_line( "result stoped" )
 
             # Прерываем цикл обработки входящих данных
             break
