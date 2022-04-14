@@ -31,6 +31,11 @@ import tables
 # Эта переменная будет накапливать входящие данные
 var data = init_table[ string, string ]()
 
+# Переменные для многострочного текста
+var multi_line:  bool   = false
+var multi_quote: string = ""
+var multi_text:  string = ""
+
 while true:
 
     # Считываем очередную строку
@@ -42,6 +47,25 @@ while true:
     # Добавляем аргументы если их нет
     if cmd_arg.len < 2:
         cmd_arg.add( "" )
+
+    # Поступила многострочная команда
+    if cmd_arg[0] == "text" and cmd_arg[1] != "":
+        multi_quote = cmd_arg[1]
+        multi_line  = true
+        continue
+
+    # Если режим многострочности, то накапливаем текст
+    if multi_line:
+        if cmd_arg[0] != multi_quote:
+            if multi_text.len > 0:
+                multi_text &= "\n"
+            multi_text &= line
+            continue
+        else:
+            cmd_arg[0] = "text"
+            cmd_arg[1] = multi_text
+            multi_line = false
+            multi_text = ""
 
     # Сохраняем полученные данные в таблице data
     data[ cmd_arg[0] ] = cmd_arg[1]
