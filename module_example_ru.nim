@@ -44,6 +44,10 @@ while true:
     # Разбиваем строку на команду и параметры
     var cmd_arg = line.split( " ", maxsplit = 1 )
 
+    # Пропустить пустую строку
+    if cmd_arg[0] == "":
+        continue
+
     # Добавляем аргументы если их нет
     if cmd_arg.len < 2:
         cmd_arg.add( "" )
