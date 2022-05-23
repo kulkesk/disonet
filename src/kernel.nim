@@ -9,11 +9,11 @@
 #[
     Реализация ядра.
     Основная идея в том, что ядро является диспетчером событий.
-    Модули, запускаясь, сообщают ядру о том, какие события они хотят обрабатывать,
-    и когда возникает событие, ядро сообщает модулю что оно возникло 
-    и передает ему данные, сопуствующие событию для обработки.
-    Модуль, обработав данные, возвращает их и ядро может передать их для
-    обработки другим модулем.
+    Модули, инициализируясь, сообщают ядру о том, какие события они хотят обрабатывать,
+    для этого они регистрируют процедуры в качестве колбеков на нужные им события.
+    Когда возникает событие, ядро вызывает все колбеки привязанные к данному событию.
+    Модули работают с глобальными данными, изменяя их.
+    Для этого будет создан глобальный объект содержащий эти данные.
 ]#
 
 import std/[tables, algorithm, os]
@@ -28,39 +28,39 @@ type
         fn: CallbackProc
   
     Event = object
-        disabled: bool          # включен или выключен этап
+        disabled: bool          # для отключения события
         next: string            # какое следующее событие
         entries: seq[Callback]  # последовательность функций зарегистрированных на это событие
   
     Krnl = object
-        stage: string
-        stages: Table[string, Event]
+        event: string
+        events: Table[string, Event]
 
 
 var krnl: Krnl
+# Начальное событие
+krnl.event = "work1"
+# Цепочка событий
+krnl.events["work1"] = Event( next: "work2" )
+krnl.events["work2"] = Event( next: "idle" )
+krnl.events["idle"]  = Event( next: "work1" )
 
 
-krnl.stage = "work1"
-krnl.stages["work1"] = Event( next: "work2" )
-krnl.stages["work2"] = Event( next: "idle"  )
-krnl.stages["idle"]  = Event( next: "work1" )
-
-
-proc addCallback( name: string, fn: CallbackProc, stage: string, priority: int = 100 ) =
-    if stage notin krnl.stages: krnl.stages[stage] = Event()
-    krnl.stages[stage].entries.add Callback( name: name, priority: priority, fn: fn )
+proc addCallback( name: string, fn: CallbackProc, event: string, priority: int = 100 ) =
+    if event notin krnl.events: krnl.events[event] = Event()
+    krnl.events[event].entries.add Callback( name: name, priority: priority, fn: fn )
 
     # Sort callbacks in-place by their priority, from lowest
     # to highest
-    krnl.stages[stage].entries.sort do ( x, y: Callback ) -> int:
+    krnl.events[event].entries.sort do ( x, y: Callback ) -> int:
         cmp( x.priority, y.priority )
 
 
-proc doEvent( stage = "" ) =
-    if stage notin krnl.stages or krnl.stages[stage].disabled:
+proc doEvent( event = "" ) =
+    if event notin krnl.events or krnl.events[event].disabled:
         return
 
-    for entry in krnl.stages[stage].entries:
+    for entry in krnl.events[event].entries:
         entry.fn()
 
 
@@ -72,34 +72,38 @@ proc doEvent( stage = "" ) =
     И в конце запускается цикл.
 ]#
 
-proc st1_fn1 = echo "stage 1, func 1"
-proc st1_fn2 = echo "stage 1, func 2"
-proc st1_fn3 = echo "stage 1, func 3"
-proc st2_fn1 = echo "stage 2, func 1"
-proc st2_fn2 = echo "stage 2, func 2"
-proc st2_fn3 = echo "stage 2, func 3"
+proc ev1_fn1 = echo "event 1, func 1"
+proc ev1_fn2 = echo "event 1, func 2"
+proc ev1_fn3 = echo "event 1, func 3"
+proc ev2_fn1 = echo "event 2, func 1"
+proc ev2_fn2 = echo "event 2, func 2"
+proc ev2_fn3 = echo "event 2, func 3"
 proc idle_sleep = echo "---"; sleep( 2000 )
 
 # Одинаковый приоритет и выполняются в порядке регистрации
-addCallback( "st1_fn3", st1_fn3, "work1" )
-addCallback( "st1_fn2", st1_fn2, "work1" )
-addCallback( "st1_fn1", st1_fn1, "work1" )
+addCallback( "ev1_fn3", ev1_fn3, "work1" )
+addCallback( "ev1_fn2", ev1_fn2, "work1" )
+addCallback( "ev1_fn1", ev1_fn1, "work1" )
+krnl.events["work1"].next = "work2"
 
 # Приоритет поменяет порядок выполнения
-addCallback( "st2_fn3", st2_fn3, "work2", 300 )
-addCallback( "st2_fn2", st2_fn2, "work2", 200 )
-addCallback( "st2_fn1", st2_fn1, "work2", 100 )
+addCallback( "ev2_fn3", ev2_fn3, "work2", 300 )
+addCallback( "ev2_fn2", ev2_fn2, "work2", 200 )
+addCallback( "ev2_fn1", ev2_fn1, "work2", 100 )
+krnl.events["work2"].next = "idle"
 
 # Добавляем колбек в несуществующий этап
-addCallback( "st2_fn1", st2_fn1, "test1" )
+addCallback( "ev2_fn1", ev2_fn1, "test1" )
 
 # Паузе 2 сек
 addCallback( "idle_sleep", idle_sleep, "idle", 10 )
+krnl.events["idle"].next = "work1"
 
 #[
     После загрузки и инициализации модулей запускаем основной цикл.
 ]#
 
-while krnl.stage != "":
-    doEvent( krnl.stage )
-    krnl.stage = krnl.stages[krnl.stage].next
+krnl.event = "work1"
+while krnl.event != "":
+    doEvent( krnl.event )
+    krnl.event = krnl.events[krnl.event].next
