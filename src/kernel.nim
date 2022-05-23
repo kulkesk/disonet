@@ -1,3 +1,21 @@
+#[
+    Этот еще не реализовано:
+    Запускаясь, программа ищет рядом с собой файл private.key и
+    если его нет, то генерирует закрытый ключ и скидывает его в файл.
+    Такой подход позволит запускать несколько экземпляров программы
+    на одном компьютере даже не изучая параметры коммандной строки.
+]#
+
+#[
+    Реализация ядра.
+    Основная идея в том, что ядро является диспетчером событий.
+    Модули, запускаясь, сообщают ядру о том, какие события они хотят обрабатывать,
+    и когда возникает событие, ядро сообщает модулю что оно возникло 
+    и передает ему данные, сопуствующие событию для обработки.
+    Модуль, обработав данные, возвращает их и ядро может передать их для
+    обработки другим модулем.
+]#
+
 import std/[tables, algorithm, os]
 
 type
@@ -9,27 +27,27 @@ type
         name: string
         fn: CallbackProc
   
-    Stage = object
-        disabled: bool
-        next: string
-        entries: seq[Callback]
+    Event = object
+        disabled: bool          # включен или выключен этап
+        next: string            # какое следующее событие
+        entries: seq[Callback]  # последовательность функций зарегистрированных на это событие
   
     Krnl = object
         stage: string
-        stages: Table[string, Stage]
+        stages: Table[string, Event]
 
 
 var krnl: Krnl
 
 
 krnl.stage = "work1"
-krnl.stages["work1"] = Stage( next: "work2" )
-krnl.stages["work2"] = Stage( next: "idle"  )
-krnl.stages["idle"]  = Stage( next: "work1" )
+krnl.stages["work1"] = Event( next: "work2" )
+krnl.stages["work2"] = Event( next: "idle"  )
+krnl.stages["idle"]  = Event( next: "work1" )
 
 
 proc addCallback( name: string, fn: CallbackProc, stage: string, priority: int = 100 ) =
-    if stage notin krnl.stages: krnl.stages[stage] = Stage()
+    if stage notin krnl.stages: krnl.stages[stage] = Event()
     krnl.stages[stage].entries.add Callback( name: name, priority: priority, fn: fn )
 
     # Sort callbacks in-place by their priority, from lowest
@@ -38,7 +56,7 @@ proc addCallback( name: string, fn: CallbackProc, stage: string, priority: int =
         cmp( x.priority, y.priority )
 
 
-proc doStage( stage = "" ) =
+proc doEvent( stage = "" ) =
     if stage notin krnl.stages or krnl.stages[stage].disabled:
         return
 
@@ -83,5 +101,5 @@ addCallback( "idle_sleep", idle_sleep, "idle", 10 )
 ]#
 
 while krnl.stage != "":
-    doStage( krnl.stage )
+    doEvent( krnl.stage )
     krnl.stage = krnl.stages[krnl.stage].next
