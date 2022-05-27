@@ -16,7 +16,7 @@
     Для этого будет создан глобальный объект содержащий эти данные.
 ]#
 
-import std/[tables, algorithm, os]
+import std/[tables, algorithm, os, strutils]
 
 type
     CallbackProc = proc() {.nimcall.}
@@ -64,7 +64,21 @@ proc doEvent( event = "" ) =
         entry.fn()
 
 
+#[
+    Проверяем существует ли конфиг-файл ядра и если нет, то создаем его.
+]#
+if not fileExists( "kernel.cfg" ):
+    let config = [
+        "loadmodule module1.dll",
+        "loadmodule module2.dll"
+    ]
+    writeFile( "kernel.cfg", join( config, "\n" ) )
 
+#[
+    Считываем конфиг-файл, парсим и выполняем содержащиеся в нем команды.
+    loadmodule module1.dll
+    loadmodule module2.dll
+]#
 
 #[
     Тут загрузка модулей (dll).
